@@ -1,22 +1,28 @@
 import cv2 as cv
 import numpy as np
-# cv.namedWindow('image', cv.WINDOW_NORMAL)
+
 cap = cv.VideoCapture(0)
+#The following variables (cx and cy) are being used for drawing lines
 former_cx = 0
 former_cy = 0
 cx = 0
 cy = 0
+#Capture a frame for initial settings
 _,old_frame=cap.read()
 mask1 = np.zeros_like(old_frame)
-count = 0 ;
+FirstCaputure = True
+#Please select the proper range here
+lowerBound = np.array([10,40,150])
+upperBound = np.array([90,255,255])
+
+#The Loop which resposible for capturing and processing the frames
 while(True):
+    #Capturing and initial processing
     ret, image = cap.read()
     imgray = cv.cvtColor(image, cv.COLOR_BGR2GRAY)
     ret, thresh = cv.threshold(imgray, 127, 255, 0)
     hsv = cv.cvtColor(image, cv.COLOR_BGR2HSV)
-    lower_blue = np.array([40, 40, 150])
-    upper_blue = np.array([90, 255, 255])
-    mask = cv.inRange(hsv, lower_blue, upper_blue)
+    mask = cv.inRange(hsv, lowerBound, upperBound)
     kernel = np.ones((5, 5), np.uint8)
     mask = cv.erode(mask,kernel,iterations = 1)
     mask = cv.dilate(mask,kernel,iterations = 2)
@@ -27,17 +33,18 @@ while(True):
     if contours!=():
         best_cnt = max(contours, key=cv.contourArea)
 
+        #If there is a best contour then draw a line associated with the current position
         if best_cnt!=[]:
-            count = count + 1
-
             M = cv.moments(best_cnt)
             cx, cy = int(M['m10'] / M['m00']), int(M['m01'] / M['m00'])
             dist =  (cx-former_cx)**2 + (cy-former_cy)**2
 
-            if(cv.contourArea(best_cnt)>50 and count!=1 and dist < 100 ):
+            if(cv.contourArea(best_cnt)>50 and (not FirstCaputure) and (dist < 100) ):
                      mask1 = cv.line(mask1, (cx, cy), (former_cx, former_cy), (0, 255, 0), thickness=2)
             if(cv.contourArea(best_cnt)>4000):
                     mask1 = np.zeros_like(old_frame)
+
+            FirstCaputure = False
 
     img = cv.add(image, mask1)
     img_flip_ud = cv.flip(img, 1)
